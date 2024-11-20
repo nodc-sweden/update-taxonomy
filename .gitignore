@@ -1,5 +1,9 @@
 export/*
 
+data_in/*
+
+code/cleanup.R
+
 # History files
 .Rhistory
 .Rapp.history

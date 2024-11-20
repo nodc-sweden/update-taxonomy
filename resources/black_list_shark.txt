@@ -1,0 +1,7 @@
+taxon_name	taxon_id	taxonRank	taxon_in_favour
+Nitzschia	6005997	Genus	1010462
+Ctenophora (Ctenophora)	249727	Subgenus	5000006
+Ctenophora	1006888	Genus	5000006
+Fritillaria	1006298	Genus	1009471
+Stagnicola	1001337	Genus	1006663
+
