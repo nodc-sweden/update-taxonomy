@@ -63,11 +63,60 @@ parents <- get_dyntaxa_parent_ids(taxon_id, subscription_key)
 # Build new Taxon file for SHARK
 taxonomy_table <- construct_dyntaxa_table(parents, subscription_key, shark_output = FALSE, recommended_only = FALSE, add_genus_children = TRUE) # Extend the table with genus children
 
+# Select cols
+
+taxonomy_table_selected <- taxonomy_table %>%
+  select(taxonId,
+         acceptedNameUsageID,
+         parentNameUsageID,
+         scientificName,
+         taxonRank,
+         scientificNameAuthorship,
+         taxonomicStatus,
+         nomenclaturalStatus,
+         taxonRemarks,
+         kingdom,
+         phylum,
+         class,
+         order,
+         family,
+         genus,
+         species
+        # hierarchy
+  )
+
+
+
+taxonomy_table_x <- taxonomy_table_selected %>%
+   filter(!grepl("×", scientificName)) %>%
+  filter(!grepl("×", species))
+  
+  !filter(taxonRank =="SpeciesComplex") %>%
+  arrange(taxonRank)
+ # filter(taxonRank =="Cultivar")
+
+
+  select(taxonRank) %>%
+  distinct()
+
 # Print Taxon file
-write_tsv(taxonomy_table, "export/Taxon.csv", na = "")
+write_tsv(taxonomy_table_selected, "export/Taxon.csv", na = "")
+
+write.table(
+  taxonomy_table_x, 
+  "export/Taxon3.csv",
+  sep = "\t",           # Tab-separated values
+  row.names = FALSE,    # No row names
+  col.names = TRUE,     # Include column names
+  na = "",              # Empty string for NA values
+  eol = "\n",          # Ensure CRLF line endings
+  #append = TRUE,        # Append to include BOM
+  quote = FALSE,
+  fileEncoding = "UTF-8" # Ensure UTF-8 encoding
+)
+
 
 # Done!
-
 
 
 
