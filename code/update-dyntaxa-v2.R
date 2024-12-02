@@ -58,10 +58,10 @@ match_adj <- match %>%
 taxon_id <- na.omit(unique(match_adj$taxon_id))
               
 # Collecting parent taxa from ID list
-parents <- get_dyntaxa_parent_ids(taxon_id, subscription_key)
+# parents <- get_dyntaxa_parent_ids(taxon_id, subscription_key) # No longer necessary
   
 # Build new Taxon file for SHARK
-taxonomy_table <- construct_dyntaxa_table(parents, subscription_key, shark_output = FALSE, recommended_only = FALSE, add_genus_children = TRUE) # Extend the table with genus children
+taxonomy_table <- construct_dyntaxa_table(taxon_id, subscription_key, shark_output = FALSE, add_synonyms = FALSE, add_descendants = TRUE, add_missing_taxa = TRUE) # Extend the table with genus children
 
 # Select cols
 
