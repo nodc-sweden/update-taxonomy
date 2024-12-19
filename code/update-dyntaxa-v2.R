@@ -6,8 +6,7 @@
 # 1. Get list of All taxa from SHARK API. get_shark_options(), select taxa
 # 2. Match scientific_name with Dyntaxa API. match_taxon_name()
 # 3. Remove taxa using black list
-# 4. Get parent taxa form Dyntaxa API. get_dyntaxa_parent_ids()
-# 5. Build a new Taxon.csv file. construct_dyntaxa_table()
+# 4. Build a new Taxon.csv file. construct_dyntaxa_table()
 
 
 # Help
@@ -63,6 +62,11 @@ taxon_id <- na.omit(unique(match_adj$taxon_id))
 # Build new Taxon file for SHARK
 taxonomy_table <- construct_dyntaxa_table(taxon_id, subscription_key, shark_output = FALSE, add_synonyms = TRUE, add_descendants = TRUE, add_missing_taxa = TRUE) # Extend the table with genus children
 
+# remove sign non breaking space
+taxonomy_table <- taxonomy_table %>%
+  mutate(across(everything(), ~ gsub("\u00A0", " ", .)))
+
+
 # Select cols
 
 taxonomy_table_selected <- taxonomy_table %>%
@@ -87,34 +91,9 @@ taxonomy_table_selected <- taxonomy_table %>%
 
 
 
-taxonomy_table_x <- taxonomy_table_selected %>%
-   filter(!grepl("×", scientificName)) %>%
-  filter(!grepl("×", species))
-  
-  !filter(taxonRank =="SpeciesComplex") %>%
-  arrange(taxonRank)
- # filter(taxonRank =="Cultivar")
-
-
-  select(taxonRank) %>%
-  distinct()
 
 # Print Taxon file
 write_tsv(taxonomy_table_selected, "export/Taxon.csv", na = "")
-
-write.table(
-  taxonomy_table_x, 
-  "export/Taxon3.csv",
-  sep = "\t",           # Tab-separated values
-  row.names = FALSE,    # No row names
-  col.names = TRUE,     # Include column names
-  na = "",              # Empty string for NA values
-  eol = "\n",          # Ensure CRLF line endings
-  #append = TRUE,        # Append to include BOM
-  quote = FALSE,
-  fileEncoding = "UTF-8" # Ensure UTF-8 encoding
-)
-
 
 # Done!
 
