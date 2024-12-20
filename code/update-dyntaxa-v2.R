@@ -7,6 +7,7 @@
 # 2. Match scientific_name with Dyntaxa API. match_taxon_name()
 # 3. Remove taxa using black list
 # 4. Build a new Taxon.csv file. construct_dyntaxa_table()
+# 5. Create genus white list.
 
 
 # Help
@@ -95,12 +96,7 @@ taxonomy_table_selected <- taxonomy_table %>%
 # Print Taxon file
 write_tsv(taxonomy_table_selected, "export/Taxon.csv", na = "")
 
-# Done!
-
-
-
-
-### Extras ###
+# 1 of 2 Done!
 
 
 # Create SHARK genus white list
@@ -122,7 +118,13 @@ write.table(white_list,
             fileEncoding = "latin1",
             row.names = FALSE)
   
+# 2 of 2 Done!
 
+
+
+
+
+### Extras ###
 
 # Get duplicate taxa, support for creating black list
 duplicate_match <- match %>% # Find duplicate rows in best_match column
