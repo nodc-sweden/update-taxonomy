@@ -12,9 +12,7 @@
 
 # Help
 # help(get_shark_options)
-# help(get_shark_data)
 # help(match_taxon_name)
-# help(get_dyntaxa_parent_ids)
 # help(construct_dyntaxa_table)
 
 
@@ -57,8 +55,6 @@ match_adj <- match %>%
 # Select ID column, remove NAs
 taxon_id <- na.omit(unique(match_adj$taxon_id))
               
-# Collecting parent taxa from ID list
-# parents <- get_dyntaxa_parent_ids(taxon_id, subscription_key) # No longer necessary
   
 # Build new Taxon file for SHARK
 taxonomy_table <- construct_dyntaxa_table(taxon_id, subscription_key, shark_output = FALSE, add_synonyms = TRUE, add_descendants = TRUE, add_missing_taxa = TRUE) # Extend the table with genus children
