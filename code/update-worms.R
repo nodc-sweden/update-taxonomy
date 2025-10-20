@@ -1,4 +1,6 @@
 #update-worms
+# 2025-10-20
+# Purpose of script is to create a new updated World Register of Marine Species - WoRMS - taxa file (taxa_worms.txt) for use in SHARK, Swedish Ocean Archive, shark.smhi.se
 
 # Workflow
 # 1. Get list of All taxa from SHARK API. get_shark_options(), select taxa
