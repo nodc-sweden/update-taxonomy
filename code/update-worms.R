@@ -1,11 +1,12 @@
 #update-worms
-# 2025-10-20
+# 2025-10-23
 # Purpose of script is to create a new updated World Register of Marine Species - WoRMS - taxa file (taxa_worms.txt) for use in SHARK, Swedish Ocean Archive, shark.smhi.se
 
 # Workflow
-# 1. Get list of All taxa from SHARK API. get_shark_options(), select taxa
-# 2. Match scientific_name with WoRMS API. match_worms_taxa()
-# 3. Build a new taxon file. add_worms_taxonomy()
+# 1. Get list of All reported taxa from SHARK API. get_shark_data()
+# 2. Clean up misspellings.
+# 3. Match scientific_name with WoRMS API. match_worms_taxa()
+# 4. Build a new taxon file. add_worms_taxonomy()
 
 # Help
 # help(get_shark_options)
@@ -22,42 +23,57 @@ library(tidyverse)
 path <-here()
 setwd(path)
 
+# Get reported taxon names from SHARK API
+reported_scientific_name <- get_shark_data(tableView = "report_taxon", row_limit = 500) %>%
+                                    select(reported_scientific_name) %>%
+                                    rename(scientific_name_adj = reported_scientific_name) %>%
+                                    unique()
 
-# Get SHARK API options
-options <- get_shark_options(prod = TRUE) # FALSE = TEST API, TRUE = PROD API
+# Read SHARK translate config file for misspellings etc
+translate_to_worms <- read.table("resources/translate_to_worms.txt", header = TRUE, fill = TRUE, sep = "\t", quote = "", fileEncoding = "cp1252")  %>%
+                                    select(scientific_name_from, scientific_name_to) %>%
+                                    filter(scientific_name_from != scientific_name_to) %>%
+                                    rename(scientific_name_adj = scientific_name_from)
 
+# Prepare taxon list before WoRMS match 
+shark_taxa <- left_join(reported_scientific_name, translate_to_worms, by = "scientific_name_adj") %>%
+                                    unique()
 
-# Get All scientific_names in SHARK database
-taxa <- data.frame(scientific_name = unlist(options$taxa))
-taxa_vector <- taxa$scientific_name
+shark_taxa <- shark_taxa %>%
+  mutate(scientific_name = if_else(is.na(scientific_name_to), scientific_name_adj, scientific_name_to)) %>%
+                                    select(scientific_name) %>%
+                                    filter(!(is.na(scientific_name) | scientific_name == ""))
 
-# test with only 50 rows
-#taxa_50 <- head(taxa, 50)
-#taxa_vector <- taxa_50$scientific_name
+# Test with only 50 rows
+#shark_taxa_50 <- head(shark_taxa, 50)
 
-# match names with WoRMS
-worms_match <- match_worms_taxa(taxa_vector, 
-                                      fuzzy = TRUE, 
-                                      best_match_only = TRUE, 
-                                      max_retries = 3, 
-                                      sleep_time = 10, 
-                                      marine_only = FALSE, 
-                                      verbose = TRUE)
+# Match names with WoRMS
+worms_match <- match_worms_taxa(shark_taxa$scientific_name, 
+                                    fuzzy = TRUE, 
+                                    best_match_only = TRUE, 
+                                    max_retries = 3, 
+                                    sleep_time = 10, 
+                                    marine_only = FALSE, 
+                                    verbose = TRUE)
 
-# taxa not in WoRMS
+# Get a list of taxa not in WoRMS
 problem_taxa <- worms_match %>%
   filter(status == "no content")
 
-# rename
+# Remove taxa without WoRMS match
+worms_match <- worms_match %>%
+filter(status != "no content")
+
+# Rename to SHARK internal_names
 worms_data <- worms_match %>%
   rename(scientific_name = name,
          NameMatchWorms = scientificname,
          aphia_id = AphiaID,
          parent_id = parentNameUsageID,
          valid_aphia_id = valid_AphiaID
-         ) %>%
+         )  %>%
   
-# select cols
+# Select cols in export file
   select(scientific_name,
          NameMatchWorms,
          authority,
@@ -76,55 +92,38 @@ worms_data <- worms_match %>%
          family,
          genus,
          lsid
-         ) %>%
-  
-# remove problem taxa
-  filter(status != "no content")
+         )
 
-# select IDs
-aphia_id_vector <- worms_data$aphia_id
-
-# create taxonomy table
-taxonomy_match <- add_worms_taxonomy(aphia_id_vector, 
+# Get taxonomy based on Aphia IDs
+taxonomy_match <- add_worms_taxonomy(worms_data$aphia_id, 
+                               add_rank_to_hierarchy = FALSE,
                                scientific_name = NULL, 
                                verbose = TRUE)
 
-# clean up
+# Taxonomy clean up
 taxonomy_select <- taxonomy_match %>%
-  select(aphia_id, 
-         worms_species, 
-         worms_hierarchy) %>%
-  
-  rename(species = worms_species,
-         classification = worms_hierarchy) %>%
-  
-  unique() %>%
-  
-  filter(!is.na(aphia_id))
+                              select(aphia_id, 
+                                     worms_species, 
+                                     worms_hierarchy) %>%
+                              rename(species = worms_species,
+                                     classification = worms_hierarchy) %>%
+                              unique() %>%
+                              filter(!is.na(aphia_id))
 
-
-# select parent ids
-parent_ids <- worms_data$parent_id
-
-# match parent ids 
-parents <- get_worms_records(parent_ids, 
+# Get parent names based on parent IDs 
+parents <- get_worms_records(worms_data$parent_id, 
                              max_retries = 3, 
                              sleep_time = 10, 
                              verbose = TRUE)
 
-# clean up
+# Parent table clean up
 parents_select <- parents %>%
-  rename(
-    parent_name = scientificname,
-    parent_id = AphiaID) %>%
-  
-  select(
-    parent_name,
-    parent_id) %>%
-  
-  unique() %>%
-  
-  filter(!is.na(parent_id))
+                             rename(parent_name = scientificname,
+                                    parent_id = AphiaID) %>%
+                             select(parent_name,
+                                    parent_id) %>%
+                             unique() %>%
+                             filter(!is.na(parent_id))
 
 # join data
 taxa_worms_file <- left_join(worms_data, taxonomy_select, by = "aphia_id")
@@ -132,7 +131,7 @@ taxa_worms_file <- left_join(worms_data, taxonomy_select, by = "aphia_id")
 taxa_worms_file <- left_join(taxa_worms_file, parents_select, by = "parent_id")
 
 
-# Select cols
+# Select cols in export file
 taxa_worms_selected <- taxa_worms_file %>%
   select(scientific_name,
          authority,
@@ -157,7 +156,6 @@ taxa_worms_selected <- taxa_worms_file %>%
 )
 
 
-
 # Print Taxon file
 write.table(taxa_worms_selected, 
             "export/taxa_worms.txt", 
@@ -166,3 +164,15 @@ write.table(taxa_worms_selected,
             quote = FALSE,
             fileEncoding = "cp1252",
             row.names = FALSE)
+
+
+
+# Print problem_taxa
+#write.table(problem_taxa, 
+#            "export/problem_taxa.txt", 
+#            na = "",
+#            sep = "\t",
+#            quote = FALSE,
+#            fileEncoding = "cp1252",
+#            row.names = FALSE)
+
