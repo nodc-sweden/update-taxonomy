@@ -37,10 +37,8 @@ translate_to_worms <- read.table("resources/translate_to_worms.txt", header = TR
 
 # Prepare taxon list before WoRMS match 
 shark_taxa <- left_join(reported_scientific_name, translate_to_worms, by = "scientific_name_adj") %>%
-                                    unique()
-
-shark_taxa <- shark_taxa %>%
-  mutate(scientific_name = if_else(is.na(scientific_name_to), scientific_name_adj, scientific_name_to)) %>%
+                                    unique() %>%
+                                    mutate(scientific_name = if_else(is.na(scientific_name_to), scientific_name_adj, scientific_name_to)) %>%
                                     select(scientific_name) %>%
                                     filter(!(is.na(scientific_name) | scientific_name == ""))
 
@@ -65,59 +63,32 @@ worms_match <- worms_match %>%
 filter(status != "no content")
 
 # Rename to SHARK internal_names
-worms_data <- worms_match %>%
-  rename(scientific_name = name,
-         NameMatchWorms = scientificname,
-         aphia_id = AphiaID,
-         parent_id = parentNameUsageID,
-         valid_aphia_id = valid_AphiaID
-         )  %>%
-  
-# Select cols in export file
-  select(scientific_name,
-         NameMatchWorms,
-         authority,
-         rank,
-         aphia_id,
-         url,
-         parent_id,
-         status,
-         valid_aphia_id,
-         valid_name,
-         valid_authority,
-         kingdom,
-         phylum,
-         class,
-         order,
-         family,
-         genus,
-         lsid
-         )
+worms_match <- worms_match %>%
+                              rename(scientific_name = name,
+                                    NameMatchWorms = scientificname,
+                                    aphia_id = AphiaID,
+                                    parent_id = parentNameUsageID,
+                                    valid_aphia_id = valid_AphiaID
+                                    )  
 
 # Get taxonomy based on Aphia IDs
-taxonomy_match <- add_worms_taxonomy(worms_data$aphia_id, 
-                               add_rank_to_hierarchy = FALSE,
-                               scientific_name = NULL, 
-                               verbose = TRUE)
-
-# Taxonomy clean up
-taxonomy_select <- taxonomy_match %>%
-                              select(aphia_id, 
-                                     worms_species, 
-                                     worms_hierarchy) %>%
-                              rename(species = worms_species,
-                                     classification = worms_hierarchy) %>%
-                              unique() %>%
-                              filter(!is.na(aphia_id))
+taxonomy <- add_worms_taxonomy(worms_match$aphia_id, 
+                                    add_rank_to_hierarchy = TRUE,
+                                    scientific_name = NULL, 
+                                    verbose = TRUE) %>%
+                                    select(aphia_id, 
+                                           worms_species, 
+                                           worms_hierarchy) %>%
+                                    rename(species = worms_species,
+                                           classification = worms_hierarchy) %>%
+                                    unique() %>%
+                                    filter(!is.na(aphia_id))
 
 # Get parent names based on parent IDs 
-parents <- get_worms_records(worms_data$parent_id, 
-                             max_retries = 3, 
-                             sleep_time = 10, 
-                             verbose = TRUE)
-
-# Parent table clean up
-parents_select <- parents %>%
+parents <- get_worms_records(worms_match$parent_id, 
+                                    max_retries = 3, 
+                                    sleep_time = 10, 
+                                    verbose = TRUE) %>%
                              rename(parent_name = scientificname,
                                     parent_id = AphiaID) %>%
                              select(parent_name,
@@ -125,35 +96,35 @@ parents_select <- parents %>%
                              unique() %>%
                              filter(!is.na(parent_id))
 
-# join data
-taxa_worms_file <- left_join(worms_data, taxonomy_select, by = "aphia_id")
+# Build the taxa_worms file
+taxa_worms_file <- left_join(worms_match, taxonomy, by = "aphia_id")
 
-taxa_worms_file <- left_join(taxa_worms_file, parents_select, by = "parent_id")
+taxa_worms_file <- left_join(taxa_worms_file, parents, by = "parent_id")
 
 
-# Select cols in export file
+# Select cols taxa_worms file
 taxa_worms_selected <- taxa_worms_file %>%
-  select(scientific_name,
-         authority,
-         rank,
-         aphia_id,
-         url,
-         parent_name,
-         parent_id,
-         status,
-         valid_aphia_id,
-         valid_name,
-         valid_authority,
-         kingdom,
-         phylum,
-         class,
-         order,
-         family,
-         genus,
-         species,
-         classification,
-         lsid
-)
+                             select(scientific_name,
+                                    authority,
+                                    rank,
+                                    aphia_id,
+                                    url,
+                                    parent_name,
+                                    parent_id,
+                                    status,
+                                    valid_aphia_id,
+                                    valid_name,
+                                    valid_authority,
+                                    kingdom,
+                                    phylum,
+                                    class,
+                                    order,
+                                    family,
+                                    genus,
+                                    species,
+                                    classification,
+                                    lsid
+                                    )
 
 
 # Print Taxon file
