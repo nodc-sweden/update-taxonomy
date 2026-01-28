@@ -14,7 +14,6 @@
 # help(add_worms_taxonomy)
 # help(get_worms_taxonomy_tree)
 
-
 # Load packages
 library(SHARK4R)
 library(tidyverse)
@@ -37,9 +36,6 @@ shark_taxa <- left_join(reported_scientific_name, translate_to_worms, by = "scie
   mutate(scientific_name = if_else(is.na(scientific_name_to), scientific_name_adj, scientific_name_to)) %>%
   select(scientific_name) %>%
   filter(!(is.na(scientific_name) | scientific_name == ""))
-
-# Test with only 50 rows
-#shark_taxa_50 <- head(shark_taxa, 50)
 
 # Match names with WoRMS
 worms_match <- match_worms_taxa(shark_taxa$scientific_name, 
@@ -108,8 +104,20 @@ taxa_worms_selected <- worms_shark_format %>%
          lsid
   )
 
+# Replace problematic characters
+taxa_worms_clean <- taxa_worms_selected %>%
+  mutate(across(where(is.character), ~iconv(., to = "cp1252", sub = "?")))
+problem_taxa_clean <- problem_taxa %>%
+  mutate(across(where(is.character), ~iconv(., to = "cp1252", sub = "?")))
+
+# Remove embedded line breaks from all character columns
+taxa_worms_clean <- taxa_worms_clean %>%
+  mutate(across(where(is.character), ~gsub("[\r\n]+", "", .)))
+problem_taxa_clean <- problem_taxa_clean %>%
+  mutate(across(where(is.character), ~gsub("[\r\n]+", "", .)))
+
 # Save Taxon file
-write.table(taxa_worms_selected, 
+write.table(taxa_worms_clean, 
             "export/taxa_worms.txt", 
             na = "",
             sep = "\t",
@@ -118,13 +126,12 @@ write.table(taxa_worms_selected,
             row.names = FALSE)
 
 
-
-# Print problem_taxa
-#write.table(problem_taxa, 
-#            "export/problem_taxa.txt", 
-#            na = "",
-#            sep = "\t",
-#            quote = FALSE,
-#            fileEncoding = "cp1252",
-#            row.names = FALSE)
+# Save problem_taxa
+write.table(problem_taxa_clean,
+           "export/problem_taxa.txt",
+           na = "",
+           sep = "\t",
+           quote = FALSE,
+           fileEncoding = "cp1252",
+           row.names = FALSE)
 
